@@ -5,9 +5,19 @@
 #include <string>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 
 extern "C" {
 #include <pci/pci.h>
+#include <stdio.h>
+}
+
+void print_unicode(const char *str) {
+    while (*str) {
+        printf("U+%04X ", (unsigned char)*str);
+        str++;
+    }
+    printf("\n");
 }
 
 namespace Runner {
@@ -36,31 +46,19 @@ namespace Runner {
             // 0x0301 = XGA compatible controller (old, no longer used)
             // 0x0302 = 3D controller
             // 0x0380 = Display Controller
-            if (dev->device_class != 0x0300 && dev->device_class != 0x0301 && dev->device_class != 0x0302 && dev->device_class != 0x0380)
+            if (dev->device_class != 0x0300 && dev->device_class != 0x0301 && dev->device_class != 0x0302 &&
+                dev->device_class != 0x0380)
                 continue;
 
             pci_lookup_name(pacc, vendor_name, sizeof(vendor_name), PCI_LOOKUP_VENDOR, dev->vendor_id);
             pci_lookup_name(pacc, device_name, sizeof(device_name), PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
-
-            GraphicalUnitConnector connector;
-
-            bool is_igpu = dev->vendor_id == 0x8086 || (dev->vendor_id == 0x1002 && dev->device_id < 0x6800);
-            bool is_dgpu = dev->bus >= 1;
-
-            if (is_igpu)
-                connector = INTERNAL;
-            else if (is_dgpu)
-                connector = DEDICATED;
-            else
-                connector = EXTERNAL;
 
             GraphicalUnit gpu{
                     .vendor = dev->vendor_id,
                     .product = dev->device_id,
                     .vendorName = std::string(vendor_name),
                     .productName = std::string(device_name),
-                    .fullName = std::string(vendor_name) + " " + std::string(device_name),
-                    .connector = connector
+                    .fullName = std::string(vendor_name) + " " + std::string(device_name)
             };
 
             gpu_units.push_back(gpu);

@@ -14,19 +14,6 @@ void list() {
         std::cout << "GPU - " << unit.vendorName << " (" << std::hex << unit.vendor << ")\n";
         std::cout << "\tName = " << unit.productName << " (" << std::hex << unit.product << ")\n";
         std::cout << "\tID = " << i << "\n";
-        std::cout << "\tConnector = ";
-
-        switch (unit.connector) {
-            case EXTERNAL:
-                std::cout << "External Graphics Card" << std::endl;
-                break;
-            case INTERNAL:
-                std::cout << "Internal GPU" << std::endl;
-                break;
-            case DEDICATED:
-                std::cout << "Dedicated GPU" << std::endl;
-                break;
-        }
 
         if (i != gpu_list.size() - 1)
             std::cout << std::endl;
