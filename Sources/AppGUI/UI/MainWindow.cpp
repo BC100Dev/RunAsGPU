@@ -5,6 +5,7 @@
 
 #include <RunAsGPU/Shared/GraphicalUnit.hpp>
 #include <RunAsGPU/Shared/Runner.hpp>
+#include <IconFinder.hpp>
 
 #include "Model/AppListModel.hpp"
 #include "Model/AppListDelegate.hpp"
@@ -106,9 +107,9 @@ void Ui_MainWindow::performLogic() const {
     appList->setFocusPolicy(Qt::StrongFocus);
 
     model->addItem(Application("Blender", "3D modeling software", "/usr/bin/blender",
-                               QIcon("/home/bc100dev/.local/share/icons/kora/apps/scalable/blender.svg")));
+                               FindIcon("blender")));
     model->addItem(Application("Firefox", "Mozilla Firefox", "/usr/bin/firefox",
-                               QIcon("/home/bc100dev/.local/share/icons/kora/apps/scalable/firefox.svg")));
+                               FindIcon("firefox")));
 
     QObject::connect(appList->selectionModel(), &QItemSelectionModel::currentChanged,
                      [&](const QModelIndex &current, const QModelIndex &) {
@@ -128,9 +129,6 @@ void Ui_MainWindow::performLogic() const {
 // "Add Application" button logic
     QObject::connect(btnApplicationAdd, &QPushButton::clicked, [&]() {
         // TODO: show app selection dialog
-        model->addItem(
-                Application(QString("Terminator"), QString("Nice looking Terminal"), QString("/usr/bin/terminator"),
-                            QIcon("/usr/share/icons/HighContrast/16x16/apps/terminator.png")));
     });
 
     // "Run Application" button logic
