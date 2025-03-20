@@ -33,3 +33,21 @@ std::string TrimString(const std::string &s) {
     size_t end = s.find_last_not_of(" \t\r\n");
     return s.substr(start, end - start + 1);
 }
+
+bool StartsWith(const std::string &str, const std::string &prefix) {
+    if (prefix.size() > str.size())
+        return false;
+
+    return std::equal(prefix.begin(), prefix.end(), str.begin());
+}
+
+bool EndsWith(const std::string &str, const std::string &suffix) {
+    if (suffix.size() > str.size())
+        return false;
+
+    return std::equal(suffix.rbegin(), suffix.rend(), str.rbegin());
+}
+
+bool StringContains(const std::string& str, const std::string& val) {
+    return str.find(val) != std::string::npos;
+}
