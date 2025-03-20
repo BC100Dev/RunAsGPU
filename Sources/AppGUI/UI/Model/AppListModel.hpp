@@ -26,6 +26,7 @@ public:
     Qt::ItemFlags flags(const QModelIndex &index) const override;
 
     void addItem(const Application &app);
+    void removeItem(const QString &appName);
     void clear();
 
 private:

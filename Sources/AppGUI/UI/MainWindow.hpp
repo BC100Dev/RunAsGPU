@@ -32,13 +32,14 @@ public:
     QLabel *labelUnitSelected;
     QLabel *labelFilter;
     QLineEdit *filterBox;
+    QPushButton *btnRemove;
     QStatusBar *statusbar;
 
     void setupUi(QMainWindow *MainWindow) {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName("MainWindow");
-        self = MainWindow;
         MainWindow->resize(660, 505);
+        self = MainWindow;
         QSizePolicy sizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
         sizePolicy.setHorizontalStretch(0);
         sizePolicy.setVerticalStretch(0);
@@ -64,7 +65,7 @@ public:
         btnUnitSelector->setGeometry(QRect(140, 350, 88, 34));
         labelUnitSelected = new QLabel(centralwidget);
         labelUnitSelected->setObjectName("labelUnitSelected");
-        labelUnitSelected->setGeometry(QRect(10, 390, 631, 71));
+        labelUnitSelected->setGeometry(QRect(10, 400, 511, 61));
         labelUnitSelected->setWordWrap(true);
         labelFilter = new QLabel(centralwidget);
         labelFilter->setObjectName("labelFilter");
@@ -72,6 +73,10 @@ public:
         filterBox = new QLineEdit(centralwidget);
         filterBox->setObjectName("filterBox");
         filterBox->setGeometry(QRect(60, 310, 591, 32));
+        btnRemove = new QPushButton(centralwidget);
+        btnRemove->setObjectName("btnRemove");
+        btnRemove->setEnabled(true);
+        btnRemove->setGeometry(QRect(540, 390, 111, 34));
         MainWindow->setCentralWidget(centralwidget);
         statusbar = new QStatusBar(MainWindow);
         statusbar->setObjectName("statusbar");
@@ -80,7 +85,6 @@ public:
         retranslateUi(MainWindow);
 
         QMetaObject::connectSlotsByName(MainWindow);
-
         performLogic();
     } // setupUi
 
@@ -89,9 +93,11 @@ public:
         btnRun->setText(QCoreApplication::translate("MainWindow", "Run Application", nullptr));
         btnApplicationAdd->setText(QCoreApplication::translate("MainWindow", "Add Application", nullptr));
         btnUnitSelector->setText(QCoreApplication::translate("MainWindow", "Select GPU", nullptr));
-        labelUnitSelected->setText(QCoreApplication::translate("MainWindow", "Selected GPU: {{UNIT}}", nullptr));
+        labelUnitSelected->setText(
+                QCoreApplication::translate("MainWindow", "Selected GPU: <b><i>{{UNIT}}</i></b>", nullptr));
         labelFilter->setText(QCoreApplication::translate("MainWindow", "Filter:", nullptr));
         filterBox->setPlaceholderText(QCoreApplication::translate("MainWindow", "Application Name", nullptr));
+        btnRemove->setText(QCoreApplication::translate("MainWindow", "Remove App", nullptr));
     } // retranslateUi
 
     void performLogic() const;

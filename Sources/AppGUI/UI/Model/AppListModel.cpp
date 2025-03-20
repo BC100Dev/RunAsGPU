@@ -42,6 +42,19 @@ void AppListModel::addItem(const Application &app) {
     endInsertRows();
 }
 
+void AppListModel::removeItem(const QString &appName) {
+    auto it = std::find_if(apps.begin(), apps.end(), [&](const Application &app) {
+        return app.name == appName;
+    });
+
+    if (it != apps.end()) {
+        int index = std::distance(apps.begin(), it);
+        beginRemoveRows(QModelIndex(), index, index);
+        apps.erase(it);
+        endRemoveRows();
+    }
+}
+
 void AppListModel::clear() {
     beginResetModel();
     apps.clear();

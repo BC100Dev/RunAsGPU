@@ -91,13 +91,13 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>390</y>
-      <width>631</width>
-      <height>71</height>
+      <y>400</y>
+      <width>511</width>
+      <height>61</height>
      </rect>
     </property>
     <property name="text">
-     <string>Selected GPU: {{UNIT}}</string>
+     <string>Selected GPU: &lt;b&gt;&lt;i&gt;{{UNIT}}&lt;/i&gt;&lt;/b&gt;</string>
     </property>
     <property name="wordWrap">
      <bool>true</bool>
@@ -127,6 +127,22 @@
     </property>
     <property name="placeholderText">
      <string>Application Name</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="btnRemove">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>540</x>
+      <y>390</y>
+      <width>111</width>
+      <height>34</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Remove App</string>
     </property>
    </widget>
   </widget>

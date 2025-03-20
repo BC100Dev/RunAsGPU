@@ -1,6 +1,7 @@
 #include "MainWindow.hpp"
 #include "UnitSelector.hpp"
 #include "AppSelector.hpp"
+#include "AppRemoval.hpp"
 
 #include <QMessageBox>
 #include <QProcess>
@@ -8,11 +9,12 @@
 
 #include <RunAsGPU/Shared/GraphicalUnit.hpp>
 #include <RunAsGPU/Shared/Runner.hpp>
-#include <IconFinder.hpp>
 #include <UnitSelectorData.hpp>
 
 #include "Model/AppListModel.hpp"
 #include "Model/AppListDelegate.hpp"
+
+#include <Shared.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -108,83 +110,6 @@ int get_default_gpu(const std::vector<GraphicalUnit> &gpu_list) {
     return 0;
 }
 
-void SaveAppList(const std::vector<Application> &appList) {
-    const char *home = getenv("HOME");
-    if (!home) {
-        std::cerr << "Failed to get home directory, exiting..." << std::endl;
-        std::abort();
-    }
-
-    std::string appListPath = std::string(home) + "/.config/RunAsGPU/apps.json";
-    if (!fs::exists(fs::path(appListPath).parent_path()))
-        fs::create_directory(fs::path(appListPath).parent_path());
-
-    QJsonArray jsonArr;
-    for (const auto &app: appList) {
-        QJsonObject obj;
-        obj["name"] = app.name;
-        obj["description"] = app.description;
-        obj["execPath"] = app.execPath;
-        obj["icon"] = app.iconStr.isEmpty() ? QJsonValue(QJsonValue::Null) : app.iconStr;
-        jsonArr.append(obj);
-    }
-
-    QJsonDocument doc(jsonArr);
-    QString configPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/RunAsGPU/apps.json";
-    QFile file(configPath);
-
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qDebug() << "Failed to save apps.json:" << file.errorString();
-        return;
-    }
-
-    file.write(doc.toJson(QJsonDocument::Indented));
-    file.close();
-}
-
-std::vector<Application> GetAppList() {
-    std::vector<Application> appList;
-
-    QString configPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/RunAsGPU/apps.json";
-    QFile file(configPath);
-
-    if (!file.exists()) {
-        std::ofstream _file(configPath.toStdString());
-        if (_file.is_open() && _file.good()) {
-            _file << "[]" << std::endl;
-            _file.close();
-        }
-        return appList;
-    }
-
-    if (!file.open(QIODevice::ReadOnly)) {
-        qDebug() << "Failed to open apps.json: " << file.errorString();
-        return appList;
-    }
-
-    QByteArray jsonData = file.readAll();
-    file.close();
-
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData);
-    if (!jsonDoc.isArray()) {
-        qDebug() << "Invalid JSON format!";
-        return appList;
-    }
-
-    QJsonArray jsonArray = jsonDoc.array();
-    for (const QJsonValue &value: jsonArray) {
-        if (!value.isObject()) continue;
-
-        QJsonObject jsonObj = value.toObject();
-        Application app{jsonObj["name"].toString(), jsonObj["desc"].toString(), jsonObj["execPath"].toString(),
-                        jsonObj["icon"].toString()};
-
-        appList.push_back(app);
-    }
-
-    return appList;
-}
-
 int gpuUnit;
 std::vector<GraphicalUnit> gpu_list;
 
@@ -204,7 +129,8 @@ void Ui_MainWindow::performLogic() const {
     if (gpuUnit == -1)
         gpuUnit = 0;
 
-    labelUnitSelected->setText("Selected GPU: " + QString::fromStdString(gpu_list[gpuUnit].fullName));
+    labelUnitSelected->setText(
+            "Selected GPU: <b><i>" + QString::fromStdString(gpu_list[gpuUnit].fullName) + "</i></b>");
 
     self->setWindowIcon(QIcon(":/AppIcon.png"));
     self->setFixedSize(self->size());
@@ -221,9 +147,13 @@ void Ui_MainWindow::performLogic() const {
     appList->setEditTriggers(QAbstractItemView::NoEditTriggers);
     appList->setFocusPolicy(Qt::StrongFocus);
 
-    givenAppList = GetAppList();
-    for (const auto &app: givenAppList)
-        model->addItem(app);
+    givenAppList = SharedCode::GetAppList();
+    if (givenAppList.empty())
+        btnRemove->setEnabled(false);
+    else {
+        for (const auto &app: givenAppList)
+            model->addItem(app);
+    }
 
     QObject::connect(appList->selectionModel(), &QItemSelectionModel::currentChanged,
                      [&](const QModelIndex &current, const QModelIndex &) {
@@ -266,8 +196,9 @@ void Ui_MainWindow::performLogic() const {
 
                 model->addItem(app);
                 givenAppList.push_back(app);
+                btnRemove->setEnabled(true);
 
-                SaveAppList(givenAppList);
+                SharedCode::SaveAppList(givenAppList);
             }
 
             Ui::selectedItems.clear();
@@ -293,6 +224,31 @@ void Ui_MainWindow::performLogic() const {
         run_app(gpuUnit, execPath);
     });
 
+    QObject::connect(btnRemove, &QPushButton::clicked, [&]() {
+        QDialog dialog;
+        Ui_AppRemovalDialog ui;
+        ui.setupUi(&dialog);
+
+        int rc = dialog.exec();
+        if (rc == QDialog::Accepted) {
+            for (const auto &app: Ui::appsForRemoval) {
+                auto it = std::find_if(givenAppList.begin(), givenAppList.end(), [&](const Application &a) {
+                    return a.name == app.name;
+                });
+
+                if (it != givenAppList.end()) {
+                    givenAppList.erase(it);
+                    model->removeItem(app.name);
+                }
+            }
+
+            SharedCode::SaveAppList(givenAppList);
+
+            if (givenAppList.empty())
+                btnRemove->setEnabled(false);
+        }
+    });
+
     // "Select GPU" button logic
     QObject::connect(btnUnitSelector, &QPushButton::clicked, [&]() {
         QDialog dialog;
@@ -309,14 +265,12 @@ void Ui_MainWindow::performLogic() const {
             if (it != gpu_list.end()) {
                 gpuUnit = std::distance(gpu_list.begin(), it);
 
-                if (ui.choiceDefUnit->isChecked()) {
-                    std::cout << "Default GPU selected: " << std::hex << UnitSelectorData::unitSelected.product
-                              << std::endl;
+                if (ui.choiceDefUnit->isChecked())
                     save_default_gpu(gpu_list, gpuUnit);
-                }
 
                 labelUnitSelected->setText(
-                        "Selected GPU: " + QString::fromStdString(UnitSelectorData::unitSelected.fullName));
+                        "Selected GPU: <b><i>" + QString::fromStdString(UnitSelectorData::unitSelected.fullName) +
+                        "</i></b>");
             } else
                 QMessageBox::warning(nullptr, "GPU Find Error", "The selected GPU was not found from its list.");
         }
