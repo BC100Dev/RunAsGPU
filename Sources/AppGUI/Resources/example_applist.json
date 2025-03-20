@@ -1,0 +1,14 @@
+[
+    {
+        "name": "AppName",
+        "desc": "Description here",
+        "exec": "/usr/bin/false",
+        "icon": null
+    },
+    {
+        "name": "Firefox",
+        "desc": "Web Browser",
+        "exec": "/usr/bin/firefox",
+        "icon": "firefox"
+    }
+]

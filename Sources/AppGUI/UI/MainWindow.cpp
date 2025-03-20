@@ -1,5 +1,6 @@
 #include "MainWindow.hpp"
 #include "UnitSelector.hpp"
+#include "AppSelector.hpp"
 
 #include <QMessageBox>
 #include <QProcess>
@@ -8,21 +9,22 @@
 #include <RunAsGPU/Shared/GraphicalUnit.hpp>
 #include <RunAsGPU/Shared/Runner.hpp>
 #include <IconFinder.hpp>
+#include <UnitSelectorData.hpp>
 
 #include "Model/AppListModel.hpp"
 #include "Model/AppListDelegate.hpp"
-#include "RunAsGPU/Shared/Shared.hpp"
-#include "UnitSelectorData.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QStandardPaths>
+#include <QFile>
 
 namespace fs = std::filesystem;
-
-AppListModel *model;
-AppListDelegate *delegate;
 
 void run_app(int gpuUnit, const QString &execPath) {
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
@@ -106,10 +108,92 @@ int get_default_gpu(const std::vector<GraphicalUnit> &gpu_list) {
     return 0;
 }
 
+void SaveAppList(const std::vector<Application> &appList) {
+    const char *home = getenv("HOME");
+    if (!home) {
+        std::cerr << "Failed to get home directory, exiting..." << std::endl;
+        std::abort();
+    }
+
+    std::string appListPath = std::string(home) + "/.config/RunAsGPU/apps.json";
+    if (!fs::exists(fs::path(appListPath).parent_path()))
+        fs::create_directory(fs::path(appListPath).parent_path());
+
+    QJsonArray jsonArr;
+    for (const auto &app: appList) {
+        QJsonObject obj;
+        obj["name"] = app.name;
+        obj["description"] = app.description;
+        obj["execPath"] = app.execPath;
+        obj["icon"] = app.iconStr.isEmpty() ? QJsonValue(QJsonValue::Null) : app.iconStr;
+        jsonArr.append(obj);
+    }
+
+    QJsonDocument doc(jsonArr);
+    QString configPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/RunAsGPU/apps.json";
+    QFile file(configPath);
+
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qDebug() << "Failed to save apps.json:" << file.errorString();
+        return;
+    }
+
+    file.write(doc.toJson(QJsonDocument::Indented));
+    file.close();
+}
+
+std::vector<Application> GetAppList() {
+    std::vector<Application> appList;
+
+    QString configPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/RunAsGPU/apps.json";
+    QFile file(configPath);
+
+    if (!file.exists()) {
+        std::ofstream _file(configPath.toStdString());
+        if (_file.is_open() && _file.good()) {
+            _file << "[]" << std::endl;
+            _file.close();
+        }
+        return appList;
+    }
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "Failed to open apps.json: " << file.errorString();
+        return appList;
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData);
+    if (!jsonDoc.isArray()) {
+        qDebug() << "Invalid JSON format!";
+        return appList;
+    }
+
+    QJsonArray jsonArray = jsonDoc.array();
+    for (const QJsonValue &value: jsonArray) {
+        if (!value.isObject()) continue;
+
+        QJsonObject jsonObj = value.toObject();
+        Application app{jsonObj["name"].toString(), jsonObj["desc"].toString(), jsonObj["execPath"].toString(),
+                        jsonObj["icon"].toString()};
+
+        appList.push_back(app);
+    }
+
+    return appList;
+}
+
 int gpuUnit;
 std::vector<GraphicalUnit> gpu_list;
 
-void Ui_MainWindow::performLogic(QMainWindow* window) const {
+AppListModel *model;
+AppListDelegate *delegate;
+
+std::vector<Application> givenAppList;
+
+void Ui_MainWindow::performLogic() const {
     gpu_list = Runner::ListGraphicalUnits();
     if (gpu_list.empty()) {
         std::cerr << "GPU list empty, exiting..." << std::endl;
@@ -122,7 +206,8 @@ void Ui_MainWindow::performLogic(QMainWindow* window) const {
 
     labelUnitSelected->setText("Selected GPU: " + QString::fromStdString(gpu_list[gpuUnit].fullName));
 
-    window->setWindowIcon(QIcon(":/AppIcon.png"));
+    self->setWindowIcon(QIcon(":/AppIcon.png"));
+    self->setFixedSize(self->size());
 
     model = new AppListModel(appList);
     delegate = new AppListDelegate(appList);
@@ -136,10 +221,9 @@ void Ui_MainWindow::performLogic(QMainWindow* window) const {
     appList->setEditTriggers(QAbstractItemView::NoEditTriggers);
     appList->setFocusPolicy(Qt::StrongFocus);
 
-    model->addItem(Application("Blender", "3D modeling software", "/usr/bin/blender",
-                               FindIcon("blender")));
-    model->addItem(Application("Firefox", "Mozilla Firefox", "/usr/bin/firefox",
-                               FindIcon("firefox")));
+    givenAppList = GetAppList();
+    for (const auto &app: givenAppList)
+        model->addItem(app);
 
     QObject::connect(appList->selectionModel(), &QItemSelectionModel::currentChanged,
                      [&](const QModelIndex &current, const QModelIndex &) {
@@ -162,9 +246,32 @@ void Ui_MainWindow::performLogic(QMainWindow* window) const {
         }
     });
 
-// "Add Application" button logic
+    // "Add Application" button logic
     QObject::connect(btnApplicationAdd, &QPushButton::clicked, [&]() {
-        // TODO: show app selection dialog
+        QDialog dialog;
+        Ui_AppSelector ui;
+        ui.setupUi(&dialog);
+
+        int rc = dialog.exec();
+        if (rc == QDialog::Accepted) {
+            for (const auto &app: Ui::selectedItems) {
+                if (!givenAppList.empty()) {
+                    auto it = std::find_if(givenAppList.begin(), givenAppList.end(), [&](const Application &a) {
+                        return a.name == app.name;
+                    });
+
+                    if (it != givenAppList.end())
+                        continue;
+                }
+
+                model->addItem(app);
+                givenAppList.push_back(app);
+
+                SaveAppList(givenAppList);
+            }
+
+            Ui::selectedItems.clear();
+        }
     });
 
     // "Run Application" button logic
@@ -195,18 +302,21 @@ void Ui_MainWindow::performLogic(QMainWindow* window) const {
         int rc = dialog.exec();
         if (rc == QDialog::Accepted) {
             auto it = std::find_if(gpu_list.begin(), gpu_list.end(), [&](const GraphicalUnit &gpu) {
-                return gpu.vendor == UnitSelectorData::unitSelected.vendor && gpu.product == UnitSelectorData::unitSelected.product;
+                return gpu.vendor == UnitSelectorData::unitSelected.vendor &&
+                       gpu.product == UnitSelectorData::unitSelected.product;
             });
 
             if (it != gpu_list.end()) {
                 gpuUnit = std::distance(gpu_list.begin(), it);
 
                 if (ui.choiceDefUnit->isChecked()) {
-                    std::cout << "Default GPU selected: " << std::hex << UnitSelectorData::unitSelected.product << std::endl;
+                    std::cout << "Default GPU selected: " << std::hex << UnitSelectorData::unitSelected.product
+                              << std::endl;
                     save_default_gpu(gpu_list, gpuUnit);
                 }
 
-                labelUnitSelected->setText("Selected GPU: " + QString::fromStdString(UnitSelectorData::unitSelected.fullName));
+                labelUnitSelected->setText(
+                        "Selected GPU: " + QString::fromStdString(UnitSelectorData::unitSelected.fullName));
             } else
                 QMessageBox::warning(nullptr, "GPU Find Error", "The selected GPU was not found from its list.");
         }

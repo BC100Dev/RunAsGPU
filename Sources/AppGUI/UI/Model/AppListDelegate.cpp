@@ -14,15 +14,21 @@ void AppListDelegate::paint(QPainter *painter, const QStyleOptionViewItem &optio
 
     QRect rect = option.rect;
     QVariant var = index.data(Qt::DecorationRole);
-    QIcon icon;
+    QString icon;
 
-    if (var.metaType() == QMetaType::fromType<QIcon>())
-        icon = var.value<QIcon>();
+    if (var.metaType() == QMetaType::fromType<QString>())
+        icon = var.value<QString>();
+
+    QIcon iconObj(icon);
+    if (icon.contains('/'))
+        iconObj = QIcon(icon);
+    else
+        iconObj = QIcon::fromTheme(icon);
 
     QString name = index.data(Qt::DisplayRole).toString();
 
     QRect iconRect = QRect(rect.left() + 5, rect.top() + 5, 32, 32);
-    icon.paint(painter, iconRect);
+    iconObj.paint(painter, iconRect);
 
     QRect textRect = QRect(iconRect.right() + 12, rect.top(), rect.width() - 50, rect.height());
     painter->drawText(textRect, Qt::AlignVCenter, name);

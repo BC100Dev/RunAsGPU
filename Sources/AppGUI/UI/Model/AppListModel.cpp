@@ -19,7 +19,7 @@ QVariant AppListModel::data(const QModelIndex &index, int role) const {
         case Qt::DisplayRole:
             return app.name;
         case Qt::DecorationRole:
-            return app.icon;
+            return app.iconStr;
         case Qt::ToolTipRole:
             return app.description;
         case Qt::UserRole:

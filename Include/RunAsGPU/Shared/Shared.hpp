@@ -5,4 +5,6 @@
 
 std::filesystem::path GetExecutablePath();
 
+std::string TrimString(const std::string& s);
+
 #endif //RUNASGPU_SHARED_HPP

@@ -9,10 +9,10 @@ struct Application {
     QString name;
     QString description;
     QString execPath;
-    QIcon icon;
+    QString iconStr;
 
-    Application(const QString &n, const QString &d, const QString &e, const QIcon &i)
-            : name(n), description(d), execPath(e), icon(i) {}
+    Application(const QString &n, const QString &d, const QString &e, const QString &i)
+            : name(n), description(d), execPath(e), iconStr(i) {}
 };
 
 class AppListModel : public QAbstractListModel {
