@@ -2,6 +2,8 @@
 #include "UnitSelector.hpp"
 
 #include <QMessageBox>
+#include <QProcess>
+#include <QPixmap>
 
 #include <RunAsGPU/Shared/GraphicalUnit.hpp>
 #include <RunAsGPU/Shared/Runner.hpp>
@@ -9,16 +11,37 @@
 
 #include "Model/AppListModel.hpp"
 #include "Model/AppListDelegate.hpp"
+#include "RunAsGPU/Shared/Shared.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <QProcess>
 
 namespace fs = std::filesystem;
 
 AppListModel *model;
 AppListDelegate *delegate;
+
+void run_app(int gpuUnit, const QString &execPath) {
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("DRI_PRIME", QString::number(gpuUnit));
+
+    auto *process = new QProcess();
+    process->setProcessEnvironment(env);
+    process->setProgram(execPath);
+    process->setArguments(QStringList());
+
+    qDebug() << "Running: " << execPath;
+    process->start();
+    if (!process->waitForStarted()) {
+        QMessageBox::warning(nullptr, "Execution Failed", "Failed to start application: " + execPath);
+        delete process;
+        return;
+    }
+
+    process->disconnect();
+    process->setParent(nullptr);
+}
 
 void save_default_gpu(const std::vector<GraphicalUnit> &gpu_list, int gpu_unit) {
     const char *home_dir = getenv("HOME");
@@ -83,7 +106,7 @@ int get_default_gpu(const std::vector<GraphicalUnit> &gpu_list) {
 
 int gpuUnit;
 
-void Ui_MainWindow::performLogic() const {
+void Ui_MainWindow::performLogic(QMainWindow* window) const {
     std::vector<GraphicalUnit> gpu_list = Runner::ListGraphicalUnits();
     if (gpu_list.empty()) {
         std::cerr << "GPU list empty, exiting..." << std::endl;
@@ -93,6 +116,12 @@ void Ui_MainWindow::performLogic() const {
     gpuUnit = get_default_gpu(gpu_list);
     if (gpuUnit == -1)
         gpuUnit = 0;
+
+    labelUnitSelected->setText("Selected GPU: " + QString::fromStdString(gpu_list[gpuUnit].fullName));
+
+    std::string iconPath = GetExecutablePath().parent_path().string() + "/AppIcon.png";
+    if (fs::exists(iconPath))
+        window->setWindowIcon(QIcon(QString::fromStdString(iconPath)));
 
     model = new AppListModel(appList);
     delegate = new AppListDelegate(appList);
@@ -121,8 +150,14 @@ void Ui_MainWindow::performLogic() const {
     QObject::connect(appList, &QListView::doubleClicked, [&](const QModelIndex &index) {
         if (index.isValid()) {
             QString execPath = index.data(Qt::UserRole).toString();
-            if (!execPath.isEmpty())
-                QProcess::startDetached(execPath);
+            if (execPath.isEmpty()) {
+                qDebug() << "Invalid application (no executable path given)";
+                QMessageBox::warning(nullptr, "Invalid application",
+                                     "The selected application has no executable path.");
+                return;
+            }
+
+            run_app(gpuUnit, execPath);
         }
     });
 
@@ -142,29 +177,12 @@ void Ui_MainWindow::performLogic() const {
 
         QString execPath = index.data(Qt::UserRole).toString();
         if (execPath.isEmpty()) {
+            qDebug() << "Invalid application (no executable path given)";
             QMessageBox::warning(nullptr, "Invalid application", "The selected application has no executable path.");
             return;
         }
 
-        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-        env.insert("DRI_PRIME", QString::number(gpuUnit));
-
-        auto *process = new QProcess();
-        process->setProcessEnvironment(env);
-        process->setProgram(execPath);
-        process->setArguments(QStringList());
-
-        qDebug() << "Running: " << execPath;
-        process->start();
-        if (!process->waitForStarted()) {
-            QMessageBox::warning(nullptr, "Execution Failed", "Failed to start application: " + execPath);
-            delete process;
-            return;
-        }
-
-
-        process->disconnect();
-        process->setParent(nullptr);
+        run_app(gpuUnit, execPath);
     });
 
     // "Select GPU" button logic

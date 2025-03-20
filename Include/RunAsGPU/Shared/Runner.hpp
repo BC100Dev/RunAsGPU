@@ -10,8 +10,6 @@ namespace Runner {
 
     std::vector<GraphicalUnit> ListGraphicalUnits();
 
-    void RunApplication(const GraphicalUnit& unit, const std::string& bin, const std::vector<std::string>& args, const std::map<std::string, std::string>& env_map);
-
 }
 
 #endif //RUNASGPU_RUNNER_HPP
