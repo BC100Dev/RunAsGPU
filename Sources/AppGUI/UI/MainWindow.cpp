@@ -12,10 +12,12 @@
 #include "Model/AppListModel.hpp"
 #include "Model/AppListDelegate.hpp"
 #include "RunAsGPU/Shared/Shared.hpp"
+#include "UnitSelectorData.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 
 namespace fs = std::filesystem;
 
@@ -105,9 +107,10 @@ int get_default_gpu(const std::vector<GraphicalUnit> &gpu_list) {
 }
 
 int gpuUnit;
+std::vector<GraphicalUnit> gpu_list;
 
 void Ui_MainWindow::performLogic(QMainWindow* window) const {
-    std::vector<GraphicalUnit> gpu_list = Runner::ListGraphicalUnits();
+    gpu_list = Runner::ListGraphicalUnits();
     if (gpu_list.empty()) {
         std::cerr << "GPU list empty, exiting..." << std::endl;
         std::abort();
@@ -191,9 +194,23 @@ void Ui_MainWindow::performLogic(QMainWindow* window) const {
         Ui_UnitSelector ui;
         ui.setupUi(&dialog);
 
-        std::vector<GraphicalUnit> gList = Runner::ListGraphicalUnits();
-        ui.gpuList = gList;
-
         int rc = dialog.exec();
+        if (rc == QDialog::Accepted) {
+            auto it = std::find_if(gpu_list.begin(), gpu_list.end(), [&](const GraphicalUnit &gpu) {
+                return gpu.vendor == UnitSelectorData::unitSelected.vendor && gpu.product == UnitSelectorData::unitSelected.product;
+            });
+
+            if (it != gpu_list.end()) {
+                gpuUnit = std::distance(gpu_list.begin(), it);
+
+                if (ui.choiceDefUnit->isChecked()) {
+                    std::cout << "Default GPU selected: " << std::hex << UnitSelectorData::unitSelected.product << std::endl;
+                    save_default_gpu(gpu_list, gpuUnit);
+                }
+
+                labelUnitSelected->setText("Selected GPU: " + QString::fromStdString(UnitSelectorData::unitSelected.fullName));
+            } else
+                QMessageBox::warning(nullptr, "GPU Find Error", "The selected GPU was not found from its list.");
+        }
     });
 }

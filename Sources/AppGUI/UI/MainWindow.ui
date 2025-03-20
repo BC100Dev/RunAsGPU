@@ -33,13 +33,13 @@
   </property>
   <property name="windowIcon">
    <iconset>
-    <normaloff>RunAsGPU_Icon.png</normaloff>RunAsGPU_Icon.png</iconset>
+    <normaloff>../../../../../.designer/backup/RunAsGPU_Icon.png</normaloff>../../../../../.designer/backup/RunAsGPU_Icon.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QPushButton" name="btnRun">
     <property name="geometry">
      <rect>
-      <x>530</x>
+      <x>540</x>
       <y>310</y>
       <width>111</width>
       <height>34</height>
@@ -68,7 +68,7 @@
    <widget class="QPushButton" name="btnApplicationAdd">
     <property name="geometry">
      <rect>
-      <x>0</x>
+      <x>10</x>
       <y>310</y>
       <width>121</width>
       <height>34</height>
@@ -81,7 +81,7 @@
    <widget class="QPushButton" name="btnUnitSelector">
     <property name="geometry">
      <rect>
-      <x>130</x>
+      <x>140</x>
       <y>310</y>
       <width>88</width>
       <height>34</height>
@@ -102,9 +102,6 @@
     </property>
     <property name="text">
      <string>Selected GPU: {{UNIT}}</string>
-    </property>
-    <property name="wordWrap">
-     <bool>true</bool>
     </property>
    </widget>
   </widget>

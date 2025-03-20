@@ -34,7 +34,7 @@ public:
         centralwidget->setObjectName("centralwidget");
         btnRun = new QPushButton(centralwidget);
         btnRun->setObjectName("btnRun");
-        btnRun->setGeometry(QRect(530, 310, 111, 34));
+        btnRun->setGeometry(QRect(540, 310, 111, 34));
         appList = new QListView(centralwidget);
         appList->setObjectName("appList");
         appList->setGeometry(QRect(10, 20, 641, 281));
@@ -42,10 +42,10 @@ public:
         appList->setWordWrap(true);
         btnApplicationAdd = new QPushButton(centralwidget);
         btnApplicationAdd->setObjectName("btnApplicationAdd");
-        btnApplicationAdd->setGeometry(QRect(0, 310, 121, 34));
+        btnApplicationAdd->setGeometry(QRect(10, 310, 121, 34));
         btnUnitSelector = new QPushButton(centralwidget);
         btnUnitSelector->setObjectName("btnUnitSelector");
-        btnUnitSelector->setGeometry(QRect(130, 310, 88, 34));
+        btnUnitSelector->setGeometry(QRect(140, 310, 88, 34));
         labelUnitSelected = new QLabel(centralwidget);
         labelUnitSelected->setObjectName("labelUnitSelected");
         labelUnitSelected->setGeometry(QRect(10, 350, 631, 71));
