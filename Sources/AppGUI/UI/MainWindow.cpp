@@ -122,9 +122,7 @@ void Ui_MainWindow::performLogic(QMainWindow* window) const {
 
     labelUnitSelected->setText("Selected GPU: " + QString::fromStdString(gpu_list[gpuUnit].fullName));
 
-    std::string iconPath = GetExecutablePath().parent_path().string() + "/AppIcon.png";
-    if (fs::exists(iconPath))
-        window->setWindowIcon(QIcon(QString::fromStdString(iconPath)));
+    window->setWindowIcon(QIcon(":/AppIcon.png"));
 
     model = new AppListModel(appList);
     delegate = new AppListDelegate(appList);
