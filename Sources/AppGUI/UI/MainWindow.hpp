@@ -45,6 +45,9 @@ public:
         appList = new QListView(centralwidget);
         appList->setObjectName("appList");
         appList->setGeometry(QRect(0, 20, 581, 281));
+        appList->setStyleSheet("QListView::item:selected { background-color: #0078d7; }");
+        appList->setFocusPolicy(Qt::StrongFocus);
+        appList->setSelectionBehavior(QAbstractItemView::SelectionBehavior::SelectRows);
         btnApplicationAdd = new QPushButton(centralwidget);
         btnApplicationAdd->setObjectName("btnApplicationAdd");
         btnApplicationAdd->setGeometry(QRect(0, 310, 121, 34));

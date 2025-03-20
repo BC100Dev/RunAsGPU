@@ -1,3 +1,5 @@
+set(CMAKE_AUTOMOC ON)
+
 find_package(PkgConfig REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Gui Core)
 

@@ -2,19 +2,45 @@
 #include "UnitSelector.hpp"
 
 #include <QMessageBox>
-#include <QStringListModel>
 
 #include <RunAsGPU/Shared/GraphicalUnit.hpp>
 #include <RunAsGPU/Shared/Runner.hpp>
 
+#include "Model/AppListModel.hpp"
+#include "Model/AppListDelegate.hpp"
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <QProcess>
 
 namespace fs = std::filesystem;
 
-static QStringListModel appListModel;
-static QStringList appEntries;
+AppListModel *model;
+AppListDelegate *delegate;
+
+void save_default_gpu(const std::vector<GraphicalUnit> &gpu_list, int gpu_unit) {
+    const char *home_dir = getenv("HOME");
+    if (!home_dir)
+        return;
+
+    std::string dir_path = std::string(home_dir) + "/.config/RunAsGPU";
+    if (!fs::exists(dir_path)) {
+        if (!fs::create_directory(dir_path)) {
+            std::cerr << "Failed to create config directory, exiting application" << std::endl;
+            std::abort();
+        }
+    }
+
+    std::string file_path = std::string(home_dir) + "/.config/RunAsGPU/gpu_identifier";
+    std::ofstream file(file_path);
+    if (file.is_open()) {
+        file << "GPU_VENDOR_ID=" << std::hex << gpu_list[gpu_unit].vendor << std::endl;
+        file << "GPU_DEVICE_ID=" << std::hex << gpu_list[gpu_unit].product << std::endl;
+        file.close();
+    } else
+        std::cerr << "Failed to open file for writing: " << file_path << std::endl;
+}
 
 int get_default_gpu(const std::vector<GraphicalUnit> &gpu_list) {
     const char *home_dir = getenv("HOME");
@@ -22,8 +48,10 @@ int get_default_gpu(const std::vector<GraphicalUnit> &gpu_list) {
         return -1;
 
     std::string file_path = std::string(home_dir) + "/.config/RunAsGPU/gpu_identifier";
-    if (!fs::exists(file_path))
+    if (!fs::exists(file_path)) {
+        save_default_gpu(gpu_list, 0);
         return 0;
+    }
 
     std::string VID, DID;
     std::ifstream file(file_path);
@@ -52,34 +80,93 @@ int get_default_gpu(const std::vector<GraphicalUnit> &gpu_list) {
     return 0;
 }
 
+int gpuUnit;
+
 void Ui_MainWindow::performLogic() const {
     std::vector<GraphicalUnit> gpu_list = Runner::ListGraphicalUnits();
     if (gpu_list.empty()) {
         std::cerr << "GPU list empty, exiting..." << std::endl;
         std::abort();
-        return;
     }
 
-    int gpuUnit = get_default_gpu(gpu_list);
+    gpuUnit = get_default_gpu(gpu_list);
+    if (gpuUnit == -1)
+        gpuUnit = 0;
 
-    appListModel.setStringList(appEntries);
-    appList->setModel(&appListModel);
+    model = new AppListModel(appList);
+    delegate = new AppListDelegate(appList);
+
+    appList->setModel(model);
+    appList->setItemDelegate(delegate);
+    appList->setViewMode(QListView::ListMode);
+    appList->setUniformItemSizes(true);
+    appList->setSpacing(5);
+    appList->setSelectionMode(QAbstractItemView::SingleSelection);
+    appList->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    appList->setFocusPolicy(Qt::StrongFocus);
+
+    model->addItem(Application("Blender", "3D modeling software", "/usr/bin/blender",
+                               QIcon("/home/bc100dev/.local/share/icons/kora/apps/scalable/blender.svg")));
+    model->addItem(Application("Firefox", "Mozilla Firefox", "/usr/bin/firefox",
+                               QIcon("/home/bc100dev/.local/share/icons/kora/apps/scalable/firefox.svg")));
+
+    QObject::connect(appList->selectionModel(), &QItemSelectionModel::currentChanged,
+                     [&](const QModelIndex &current, const QModelIndex &) {
+                         if (current.isValid()) {
+                             qDebug() << "Selected App:" << current.data(Qt::DisplayRole).toString();
+                         }
+                     });
+
+    QObject::connect(appList, &QListView::doubleClicked, [&](const QModelIndex &index) {
+        if (index.isValid()) {
+            QString execPath = index.data(Qt::UserRole).toString();
+            if (!execPath.isEmpty())
+                QProcess::startDetached(execPath);
+        }
+    });
 
 // "Add Application" button logic
     QObject::connect(btnApplicationAdd, &QPushButton::clicked, [&]() {
-        QString appEntry = "New Application Entry";  // Placeholder for actual selection logic
-        appEntries.append(appEntry);  // Add entry to QStringList
-        appListModel.setStringList(appEntries);  // Update QListView
+        // TODO: show app selection dialog
+        model->addItem(
+                Application(QString("Terminator"), QString("Nice looking Terminal"), QString("/usr/bin/terminator"),
+                            QIcon("/usr/share/icons/HighContrast/16x16/apps/terminator.png")));
     });
 
     // "Run Application" button logic
     QObject::connect(btnRun, &QPushButton::clicked, [&]() {
-        if (appEntries.isEmpty()) {
-            QMessageBox::warning(nullptr, "Run Application", "No application selected.");
-        } else {
-            QMessageBox::information(nullptr, "Run Application", "Running: " + appEntries.first());
-            // TODO: Implement actual GPU switching logic
+        QModelIndex index = appList->currentIndex();
+        if (!index.isValid()) {
+            qDebug() << "No application selected";
+            QMessageBox::warning(nullptr, "No Application selected", "Please select an application to run.");
+            return;
         }
+
+        QString execPath = index.data(Qt::UserRole).toString();
+        if (execPath.isEmpty()) {
+            QMessageBox::warning(nullptr, "Invalid application", "The selected application has no executable path.");
+            return;
+        }
+
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert("DRI_PRIME", QString::number(gpuUnit));
+
+        auto *process = new QProcess();
+        process->setProcessEnvironment(env);
+        process->setProgram(execPath);
+        process->setArguments(QStringList());
+
+        qDebug() << "Running: " << execPath;
+        process->start();
+        if (!process->waitForStarted()) {
+            QMessageBox::warning(nullptr, "Execution Failed", "Failed to start application: " + execPath);
+            delete process;
+            return;
+        }
+
+
+        process->disconnect();
+        process->setParent(nullptr);
     });
 
     // "Select GPU" button logic
