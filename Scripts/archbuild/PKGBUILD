@@ -1,0 +1,31 @@
+# Maintainer: BC100Dev <contact@bc100dev.net>
+
+pkgname=run-as-gpu
+pkgver=1.0
+pkgrel=1
+pkgdesc="A tool to run applications under specific GPUs"
+arch=('x86_64')
+url="https://github.com/BC100Dev/RunAsGPU"
+license=('GPLv3')
+depends=('qt6-base' 'qt6-tools' 'glibc')
+optdepends=('qt6-wayland: Qt6 support for Wayland compositors')
+makedepends=('cmake' 'make' 'gcc' 'qt6-base')
+source=("git+$url.git")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/RunAsGPU"
+	BUILD_DIR="Builds/$(uname -s)-$(uname -m)"
+	mkdir -p "$BUILD_DIR"
+	cmake -S "$srcdir/RunAsGPU" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
+	cmake --build "$BUILD_DIR"
+}
+
+package() {
+	cd "$srcdir/RunAsGPU"
+	BUILD_DIR="Builds/$(uname -s)-$(uname -m)"
+	install -Dm755 $BUILD_DIR/RunAsGPU "$pkgdir/usr/bin/RunAsGPU"
+	install -Dm755 $BUILD_DIR/RunAsGPU-CLI "$pkgdir/usr/bin/RunAsGPU-CLI"
+	install -Dm644 Resources/RunAsGPU-Icon.png "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/RunAsGPU.png"
+	install -Dm644 Resources/RunAsGPU.desktop "$pkgdir/usr/share/applications/RunAsGPU.desktop"
+}
