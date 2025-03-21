@@ -1,8 +1,8 @@
 Package: run-as-gpu
-Version: 1.0
+Version: 1.0-2
 Section: utils
 Priority: optional
 Architecture: amd64
-Depends: qt6-base, libc6
+Depends: libqt6core6, libqt6gui6, libqt6widgets6, libpci-dev, libc6
 Maintainer: BC100Dev <contact@bc100dev.net>
 Description: An utility to easily run apps under a specific GPU

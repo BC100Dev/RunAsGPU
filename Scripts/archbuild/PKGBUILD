@@ -9,7 +9,7 @@ url="https://github.com/BC100Dev/RunAsGPU"
 license=('GPLv3')
 depends=('qt6-base' 'qt6-tools' 'glibc')
 optdepends=('qt6-wayland: Qt6 support for Wayland compositors')
-makedepends=('cmake' 'make' 'gcc' 'qt6-base')
+makedepends=('cmake' 'make' 'gcc' 'qt6-base' 'patchelf')
 source=("git+$url.git")
 sha256sums=('SKIP')
 
@@ -24,8 +24,25 @@ build() {
 package() {
 	cd "$srcdir/RunAsGPU"
 	BUILD_DIR="Builds/$(uname -s)-$(uname -m)"
-	install -Dm755 $BUILD_DIR/RunAsGPU "$pkgdir/usr/bin/RunAsGPU"
-	install -Dm755 $BUILD_DIR/RunAsGPU-CLI "$pkgdir/usr/bin/RunAsGPU-CLI"
+	BINDIR="$pkgdir/usr/share/RunAsGPU"
+	install -Dm755 $BUILD_DIR/RunAsGPU "$pkgdir/usr/share/RunAsGPU/RunAsGPU"
+	install -Dm755 $BUILD_DIR/RunAsGPU-CLI "$pkgdir/usr/share/RunAsGPU/RunAsGPU-CLI"
+
+	mkdir -p "$pkgdir/usr/bin"
+	ln -s "$BINDIR/RunAsGPU" "$pkgdir/usr/bin/RunAsGPU"
+	ln -s "$BINDIR/RunAsGPU-CLI" "$pkgdir/usr/bin/RunAsGPU-CLI"
+
 	install -Dm644 Resources/RunAsGPU-Icon.png "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/RunAsGPU.png"
 	install -Dm644 Resources/RunAsGPU.desktop "$pkgdir/usr/share/applications/RunAsGPU.desktop"
+
+	mkdir -p "$BINDIR/libs"
+
+	for bin in "$BUILD_DIR/RunAsGPU" "$BUILD_DIR/RunAsGPU-CLI"; do
+    	ldd "$bin" | awk '{print $3}' | grep -E '^/' | grep -vE '^/usr/lib/|^/lib/' | while read -r lib; do
+    		cp -u "$lib" "$BINDIR/libs/"
+    	done
+
+    	patchelf --set-rpath '$ORIGIN/libs' "$bin"
+    	strip "$bin"
+    done
 }
