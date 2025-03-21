@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=RunAsGPU
+Comment=An utility to easily run apps under a specific GPU
+Description=An utility to easily run apps under a specific GPU
+Icon=RunAsGPU
+Exec=RunAsGPU
+Terminal=false
+Categories=Utility;
