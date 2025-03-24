@@ -1,0 +1,84 @@
+{
+    "name": "RunAsGPU",
+    "pkg-name": "run-as-gpu",
+    "version": "1.0-2",
+    "description": "An utility to easily run apps under a specific GPU",
+    "maintainer": "BC100Dev <contact@bc100dev.net>",
+    "icon": "Resources/RunAsGPU-Icon.png",
+    "sections": [
+        "utils"
+    ],
+    "priority": "optional",
+    "architectures": [
+        "x86_64"
+    ],
+    "depends": {
+        "arch_pkg": [
+            "qt6-base",
+            "pciutils"
+        ]
+    },
+    "pkg-settings": {
+        "__RequireEnv__": {
+            "BUILD_DIR": "The path to the build directory, in which the binaries were compiled in"
+        },
+        "__EnvironmentMap__": {
+            "RPATH_FIRST": "$ORIGIN/libs"
+        },
+        "RuntimePaths": {
+            "RPATH": true,
+            "Locations": [
+                "{RPATH_FIRST}"
+            ]
+        },
+        "DependencyPackaging": {
+            "SourceBinaries": true,
+            "RepackageToSelf": true,
+            "Sources": [
+                "*.so*"
+            ],
+            "Destination": "{RPATH_FIRST}/"
+        },
+        "Distribution": {
+            "FilePlacements": {
+                "{BUILD_DIR}/RunAsGPU": "/usr/share/run-as-gpu/RunAsGPU",
+                "{BUILD_DIR}/RunAsGPU-CLI": "/usr/share/run-as-gpu/RunAsGPU-CLI"
+            },
+            "PostCopy": [
+                {
+                    "Action": "symlink",
+                    "Source": "/usr/share/run-as-gpu/RunAsGPU",
+                    "Destination": "/usr/bin/RunAsGPU"
+                },
+                {
+                    "Action": "symlink",
+                    "Source": "/usr/share/run-as-gpu/RunAsGPU-CLI",
+                    "Destination": "/usr/bin/RunAsGPU-CLI"
+                },
+                "lib_repackage",
+                {
+                    "Action": "create_desktop",
+                    "InfoPassthrough": true,
+                    "Data": {
+                        "Terminal": false,
+                        "Exec": "RunAsGPU"
+                    },
+                    "Output": "{pkgdir}/usr/share/applications/RunAsGPU.desktop"
+                },
+                {
+                    "Action": "create_package",
+                    "Formats": [
+                        "deb",
+                        "arch-pkg",
+                        "TGZ",
+                        "AppImage"
+                    ],
+                    "TGZ": {
+                        "PackageFrom": "/usr/share/run-as-gpu",
+                        "IncludeParent": false
+                    }
+                }
+            ]
+        }
+    }
+}

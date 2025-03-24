@@ -39,7 +39,10 @@ package() {
 
 	for bin in "$BUILD_DIR/RunAsGPU" "$BUILD_DIR/RunAsGPU-CLI"; do
     	ldd "$bin" | awk '{print $3}' | grep -E '^/' | grep -vE '^/usr/lib/|^/lib/' | while read -r lib; do
-    		cp -u "$lib" "$BINDIR/libs/"
+    	    dest="$BINDIR/libs/$(basename "$lib")"
+    	    if [ ! -f "$dest" ]; then
+            	cp -v "$lib" "$dest"
+            fi
     	done
 
     	patchelf --set-rpath '$ORIGIN/libs' "$bin"
